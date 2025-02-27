@@ -1,6 +1,6 @@
 # 稳定大模型调用中间层
 
-![Python Package](https://github.com/yourusername/stable-llm-service/workflows/Python%20Package/badge.svg)
+![Python Package](https://github.com/1587causalai/stable-llm-service/workflows/Python%20Package/badge.svg)
 [![PyPI version](https://badge.fury.io/py/stable-llm-service.svg)](https://badge.fury.io/py/stable-llm-service)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
