@@ -11,8 +11,11 @@ from concurrent.futures import TimeoutError
 # 确保可以导入stable_llm_service
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# 直接从模块文件导入
-from stable_llm_service import StableLLMService
+# 直接导入模块
+import stable_llm_service
+
+# 获取需要的类
+StableLLMService = stable_llm_service.StableLLMService
 
 class TestStableLLMService(unittest.TestCase):
     """测试StableLLMService类"""
