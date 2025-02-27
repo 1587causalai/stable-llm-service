@@ -10,7 +10,7 @@
 - ServiceHealthMonitor: 服务健康监控器，实现断路器模式
 """
 
-from .stable_llm_service import (
+from stable_llm_service import (
     StableLLMService,
     ServiceHealthMonitor,
     BaseLLMService,
