@@ -32,7 +32,7 @@ class TestStableLLMService(unittest.TestCase):
         if "GEMINI_API_KEY" in os.environ:
             del os.environ["GEMINI_API_KEY"]
     
-    @patch('stable_llm_service.stable_llm_service.ServiceFactory.create_service')
+    @patch('stable_llm_service.ServiceFactory.create_service')
     def test_initialization(self, mock_create_service):
         """测试服务初始化"""
         # 模拟服务创建
@@ -56,7 +56,7 @@ class TestStableLLMService(unittest.TestCase):
         self.assertEqual(service.health_monitor.failure_threshold, 2)
         self.assertEqual(service.health_monitor.cool_down_period, 10.0)
     
-    @patch('stable_llm_service.stable_llm_service.ServiceFactory.create_service')
+    @patch('stable_llm_service.ServiceFactory.create_service')
     def test_service_order_customization(self, mock_create_service):
         """测试自定义服务顺序"""
         # 模拟服务创建
@@ -70,7 +70,7 @@ class TestStableLLMService(unittest.TestCase):
         # 验证服务顺序
         self.assertEqual(service.service_order, custom_order)
     
-    @patch('stable_llm_service.stable_llm_service.ServiceFactory.create_service')
+    @patch('stable_llm_service.ServiceFactory.create_service')
     def test_is_rate_limited(self, mock_create_service):
         """测试限流检测"""
         # 模拟服务创建
@@ -86,8 +86,8 @@ class TestStableLLMService(unittest.TestCase):
         self.assertTrue(service._is_rate_limited(Exception("Quota exceeded for this month")))
         self.assertFalse(service._is_rate_limited(Exception("Invalid API key")))
     
-    @patch('stable_llm_service.stable_llm_service.ThreadPoolExecutor')
-    @patch('stable_llm_service.stable_llm_service.ServiceFactory.create_service')
+    @patch('stable_llm_service.ThreadPoolExecutor')
+    @patch('stable_llm_service.ServiceFactory.create_service')
     def test_timeout_handling(self, mock_create_service, mock_executor):
         """测试超时处理"""
         # 模拟服务创建
