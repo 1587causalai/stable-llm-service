@@ -55,6 +55,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger("StableLLMService")
 
+# 尝试导入并加载.env文件
+try:
+    from dotenv import load_dotenv
+    # 尝试加载.env文件中的环境变量
+    load_dotenv()
+    logger.info("已尝试加载.env文件中的环境变量")
+except ImportError:
+    logger.warning("未安装python-dotenv库，无法自动加载.env文件。请运行: pip install python-dotenv")
+
 # 尝试导入大模型依赖，如果不存在则提供安装指南
 try:
     import openai
@@ -423,6 +432,11 @@ class StableLLMService:
         anthropic_api_key = anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY")
         gemini_api_key = gemini_api_key or os.environ.get("GEMINI_API_KEY")
         
+        # 从环境变量获取服务调用顺序（如果未提供）
+        if service_order is None and os.environ.get("SERVICE_ORDER"):
+            service_order = os.environ.get("SERVICE_ORDER").split(",")
+            logger.info(f"从环境变量读取服务调用顺序: {', '.join(service_order)}")
+        
         # 初始化服务配置
         self.configs = {}
         
@@ -430,13 +444,13 @@ class StableLLMService:
         if openai_api_key:
             self.configs["openai_primary"] = LLMServiceConfig(
                 provider="openai",
-                model_name="gpt-4o",
+                model_name="chatgpt-4o-latest",
                 api_key=openai_api_key,
                 is_primary=True
             )
             self.configs["openai_fallback"] = LLMServiceConfig(
                 provider="openai",
-                model_name="gpt-3.5-turbo",
+                model_name="gpt-4o-mini",
                 api_key=openai_api_key,
                 is_primary=False
             )
@@ -444,13 +458,13 @@ class StableLLMService:
         if anthropic_api_key:
             self.configs["anthropic_primary"] = LLMServiceConfig(
                 provider="anthropic",
-                model_name="claude-3-opus-20240229",
+                model_name="claude-3-7-sonnet-20250219",
                 api_key=anthropic_api_key,
                 is_primary=True
             )
             self.configs["anthropic_fallback"] = LLMServiceConfig(
                 provider="anthropic",
-                model_name="claude-3-haiku-20240307",
+                model_name="claude-3-5-sonnet-latest",
                 api_key=anthropic_api_key,
                 is_primary=False
             )
@@ -458,13 +472,20 @@ class StableLLMService:
         if gemini_api_key:
             self.configs["gemini_primary"] = LLMServiceConfig(
                 provider="gemini",
-                model_name="gemini-1.5-pro",
+                model_name="gemini-2.0-flash-001",
                 api_key=gemini_api_key,
                 is_primary=True
             )
             self.configs["gemini_fallback"] = LLMServiceConfig(
                 provider="gemini",
-                model_name="gemini-1.5-flash",
+                model_name="gemini-2.0-pro-exp-02-05",
+                api_key=gemini_api_key,
+                is_primary=False
+            )
+            # 添加第三级备选服务
+            self.configs["gemini_fallback2"] = LLMServiceConfig(
+                provider="gemini",
+                model_name="gemini-2.0-flash-lite-preview-02-05",
                 api_key=gemini_api_key,
                 is_primary=False
             )
@@ -641,6 +662,43 @@ class StableLLMService:
             except Exception as e:
                 error_msg = str(e)
                 logger.warning(f"备用服务 {service_name} 调用失败: {error_msg}")
+                
+                # 记录失败
+                self.health_monitor.record_failure(service_name)
+                
+                # 记录错误
+                errors.append({
+                    "service": service_name,
+                    "error": error_msg
+                })
+                
+                continue
+        
+        # 3. 尝试所有第三级备选服务（如果存在）
+        logger.info("所有备用服务调用失败，尝试第三级备选服务")
+        for provider in self.service_order:
+            service_name = f"{provider}_fallback2"
+            
+            # 检查服务是否存在和可用
+            if service_name not in self.services:
+                continue
+                
+            if not self.health_monitor.is_available(service_name):
+                logger.warning(f"第三级备选服务 {service_name} 暂时禁用，跳过")
+                errors.append({
+                    "service": service_name,
+                    "error": "服务暂时禁用（断路器已触发）"
+                })
+                continue
+            
+            try:
+                logger.info(f"尝试使用第三级备选服务: {service_name}")
+                result = self._call_with_timeout(service_name, method_name, *args, **kwargs)
+                logger.info(f"第三级备选服务 {service_name} 调用成功")
+                return result
+            except Exception as e:
+                error_msg = str(e)
+                logger.warning(f"第三级备选服务 {service_name} 调用失败: {error_msg}")
                 
                 # 记录失败
                 self.health_monitor.record_failure(service_name)
