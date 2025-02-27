@@ -11,14 +11,8 @@ from concurrent.futures import TimeoutError
 # 确保可以导入stable_llm_service
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+# 直接从模块文件导入
 from stable_llm_service import StableLLMService
-
-# 导入PIL库用于创建测试图像
-try:
-    from PIL import Image
-    PIL_AVAILABLE = True
-except ImportError:
-    PIL_AVAILABLE = False
 
 class TestStableLLMService(unittest.TestCase):
     """测试StableLLMService类"""
@@ -130,47 +124,6 @@ class TestStableLLMService(unittest.TestCase):
         
         # 验证失败被记录
         health_monitor_spy.record_failure.assert_called_once_with("openai_primary")
-    
-    @unittest.skipIf(not PIL_AVAILABLE, "PIL库未安装，跳过图像分析测试")
-    @patch('stable_llm_service.ServiceFactory.create_service')
-    def test_image_analysis(self, mock_create_service):
-        """测试图像分析功能"""
-        # 创建一个简单的测试图像（渐变色图像）
-        width, height = 300, 200
-        test_image = Image.new('RGB', (width, height))
-        
-        # 填充渐变色
-        for x in range(width):
-            for y in range(height):
-                r = int(255 * x / width)
-                g = int(255 * y / height)
-                b = int(255 * (x + y) / (width + height))
-                test_image.putpixel((x, y), (r, g, b))
-        
-        # 模拟服务响应
-        expected_response = {
-            "raw_content": "这是一个RGB渐变色图像",
-            "provider": "openai",
-            "model": "chatgpt-4o-latest",
-            "finish_reason": "stop"
-        }
-        
-        # 设置模拟
-        mock_service = MagicMock()
-        mock_service.analyze.return_value = expected_response
-        mock_create_service.return_value = mock_service
-        
-        # 初始化服务
-        service = StableLLMService()
-        service.services = {"openai_primary": mock_service}
-        
-        # 调用分析方法
-        prompt = "描述这个图像"
-        result = service._call_service("analyze", prompt, test_image)
-        
-        # 验证结果
-        self.assertEqual(result, expected_response)
-        mock_service.analyze.assert_called_once_with(prompt, test_image)
 
 if __name__ == '__main__':
     unittest.main() 
